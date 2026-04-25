@@ -1,3 +1,3 @@
 import streamlit as st
 
-st.subtitle("ISOM5240")
+st.title("ISOM5240")
