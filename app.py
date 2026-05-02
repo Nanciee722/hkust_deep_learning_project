@@ -21,4 +21,4 @@ if uploaded_image is not None:
 
 # Button interaction
 if st.button("Click Me"):
-    st.write("🎉 You clicked the button!:smile:")
+    st.write("🎉 You clicked the button!:rabbit:")
