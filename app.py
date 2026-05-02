@@ -11,7 +11,7 @@ def img2text(url):
     return text
 
 # Main part
-st.set_page_config(page_title="Your Image to Audio Story", page_icon="🛬"
+st.set_page_config(page_title="Your Image to Audio Story", page_icon="🛬")
 
 
 <g transform="matrix(0.71 0 0 0.71 12 12)" >
