@@ -12,7 +12,7 @@ def img2text(url):
 
 # Main part
 st.set_page_config(page_title="Your Image to Audio Story", page_icon="https://img.icons8.com/?size=100&id=bzqXt96HRwJO&format=png&color=000000")
-st.header("Turn Your Image to Audio Story")
+st.header("https://img.icons8.com/?size=100&id=bzqXt96HRwJO&format=png&color=000000 Turn Your Image to Audio Story")
 uploaded_file = st.file_uploader("Select an Image...")
 
 if uploaded_file is not None:
