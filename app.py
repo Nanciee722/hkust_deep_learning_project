@@ -5,26 +5,27 @@ import streamlit as st
 from transformers import pipeline
 
 # ==============================================
-# ✅ 同时加载 YOUR 两个模型！！
+# 同时加载两个模型，修正了子文件夹路径
 # ==============================================
 @st.cache_resource(show_spinner="Loading YOUR TWO models...")
 def load_both_models():
-    # 你的模型 1
+    # 模型1：starbucks_sentiment_model（文件在子文件夹里）
     model1 = pipeline(
         "text-classification",
         model="Nancyaaaaaaa/starbucks_sentiment_model",
+        subfolder="starbucks_sentiment_model",  # 关键修正
         device=-1
     )
 
-    # 你的模型 2
+    # 模型2：final_starbucks_model（文件在子文件夹里）
     model2 = pipeline(
         "text-classification",
         model="Nancyaaaaaaa/final_starbucks_model",
+        subfolder="final_starbucks_model",  # 关键修正
         device=-1
     )
     return model1, model2
 
-# 加载！
 sentiment_model1, sentiment_model2 = load_both_models()
 
 # ==============================================
