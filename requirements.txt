@@ -1,5 +1,9 @@
-streamlit
-transformers<5.0.0
-torch
-Pandas
-Pillow
+streamlit>=1.28
+transformers>=4.35
+torch>=2.0
+torchvision>=0.15
+torchaudio>=2.0
+accelerate>=0.24
+huggingface-hub>=0.17
+sentencepiece>=0.1.99
+protobuf>=3.20
