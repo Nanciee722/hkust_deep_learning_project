@@ -2,24 +2,30 @@ import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 import streamlit as st
+from huggingface_hub import login
 from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 
 # --------------------------
-# 模型加载（绝对不报错版本）
+# 登录 Hugging Face（正确写法！）
 # --------------------------
-@st.cache_resource(show_spinner="Loading models...")
+login(token=st.secrets["HF_TOKEN"])
+
+# --------------------------
+# 加载 YOUR 模型
+# --------------------------
+@st.cache_resource(show_spinner="Loading YOUR model...")
 def load_models():
-    # 直接用公开模型 → 绝对能跑！
+    # 你的模型！
     sentiment_analyzer = pipeline(
         "text-classification",
-        model="distilbert-base-uncased-finetuned-sst-2-english",
+        model="Nancyaaaaaaa/starbucks_sentiment_model",
         device=-1
     )
 
-    # 摘要 + 回复模型
-    gen_name = "MBZUAI/LaMini-Flan-T5-248M"
-    tokenizer = AutoTokenizer.from_pretrained(gen_name)
-    model = AutoModelForSeq2SeqLM.from_pretrained(gen_name)
+    # 摘要 & 回复模型
+    gen_model = "MBZUAI/LaMini-Flan-T5-248M"
+    tokenizer = AutoTokenizer.from_pretrained(gen_model)
+    model = AutoModelForSeq2SeqLM.from_pretrained(gen_model)
 
     return sentiment_analyzer, tokenizer, model
 
@@ -28,18 +34,16 @@ sentiment_analyzer, tokenizer, model = load_models()
 # --------------------------
 # 分析函数
 # --------------------------
-def analyze_review(review):
+def analyze_customer_review(review):
     sentiment = sentiment_analyzer(review)[0]["label"]
 
-    # 摘要
-    sum_prompt = f"summarize customer review in one sentence: {review}"
-    sum_ids = model.generate(
-        **tokenizer(sum_prompt, return_tensors="pt", truncation=True),
+    summary_prompt = f"summarize customer review in one short sentence: {review}"
+    summary_ids = model.generate(
+        **tokenizer(summary_prompt, return_tensors="pt", truncation=True),
         max_length=30, min_length=8, num_beams=4
     )
-    summary = tokenizer.decode(sum_ids[0], skip_special_tokens=True)
+    summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
 
-    # 回复
     reply_prompt = f"""Customer summary: {summary}
     Write a polite Starbucks service reply starting with: Thank you for your valuable feedback."""
 
@@ -54,13 +58,13 @@ def analyze_review(review):
 # --------------------------
 # 界面
 # --------------------------
-st.title("Starbucks Review Analyzer")
+st.title("Starbucks Review Analyzer (Using MY TRAINED MODEL)")
 
 review = st.text_area("Enter your review:")
 
 if st.button("Analyze"):
     if review:
-        sentiment, summary, reply = analyze_review(review)
+        sentiment, summary, reply = analyze_customer_review(review)
         st.subheader("Sentiment")
         st.write(sentiment)
         st.subheader("Summary")
@@ -68,4 +72,4 @@ if st.button("Analyze"):
         st.subheader("Service Reply")
         st.write(reply)
     else:
-        st.warning("Please enter a review.")
+        st.warning("Please enter a review first!")
