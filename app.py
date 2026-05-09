@@ -4,7 +4,9 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import streamlit as st
 from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 
-# 在这里切换模型，二选一即可
+# --------------------------
+# 模型选择：二选一即可
+# --------------------------
 # MODEL_NAME = "Nancyaaaaaaa/starbucks_sentiment_model"
 MODEL_NAME = "Nancyaaaaaaa/final_starbucks_model"
 
@@ -16,6 +18,7 @@ def load_models():
         device=-1
     )
 
+    # 摘要与回复生成模型
     gen_model_name = "MBZUAI/LaMini-Flan-T5-248M"
     gen_tokenizer = AutoTokenizer.from_pretrained(gen_model_name)
     gen_model = AutoModelForSeq2SeqLM.from_pretrained(gen_model_name)
@@ -27,6 +30,7 @@ sentiment_analyzer, tokenizer, model = load_models()
 def analyze_customer_review(review):
     sentiment = sentiment_analyzer(review)[0]["label"]
 
+    # 生成摘要
     summary_prompt = f"summarize customer review in one short sentence: {review}"
     summary_ids = model.generate(
         **tokenizer(summary_prompt, return_tensors="pt", truncation=True, max_length=512),
@@ -34,6 +38,7 @@ def analyze_customer_review(review):
     )
     summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
 
+    # 生成客服回复
     reply_prompt = (
         f"Customer feedback summary: {summary}\n"
         "Write a polite Starbucks customer service reply starting with: Thank you for your valuable feedback."
@@ -46,6 +51,9 @@ def analyze_customer_review(review):
 
     return sentiment, summary, reply
 
+# --------------------------
+# Streamlit 界面
+# --------------------------
 st.title("Starbucks Customer Review Analyzer ☕")
 st.caption(f"Using model: {MODEL_NAME}")
 
