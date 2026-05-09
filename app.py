@@ -1,47 +1,64 @@
-# Program title: Storytelling App
+# app.py (Step 4 - Full AI Customer Review Analysis)
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-# Import part
-import streamlit as st
-from transformers import pipeline
+from flask import Flask, request, jsonify, render_template
+from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 
-# Function part
-def img2text(url):
-    image_to_text_model = pipeline("image-to-text", model="Salesforce/blip-image-captioning-base")
-    text = image_to_text_model(url)[0]["generated_text"]
-    return text
+app = Flask(__name__)
 
-# Main part
-st.set_page_config(page_title="Your Image to Audio Story", page_icon="https://img.icons8.com/?size=100&id=bzqXt96HRwJO&format=png&color=000000")
-st.header("Turn Your Image to Audio Story")
-uploaded_file = st.file_uploader("Select an Image...")
+# Load models
+sentiment_analyzer = pipeline("text-classification", model="final_starbucks_model", device=-1)
 
-if uploaded_file is not None:
-    # Save file locally
-    bytes_data = uploaded_file.getvalue()
-    with open(uploaded_file.name, "wb") as file:
-        file.write(bytes_data)
+model_name = "MBZUAI/LaMini-Flan-T5-248M"
+tokenizer = AutoTokenizer.frompretrained(model_name)
+model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
 
-    st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+# AI Function (Step 4 core logic)
+def analyze_customer_review(review):
+    # Sentiment analysis
+    sentiment = sentiment_analyzer(review)[0]["label"]
 
-    # Stage 1: Image to Text (Using the function)
-    st.text('Processing img2text...')
-    scenario = img2text(uploaded_file.name)
-    st.write(f"**Scenario:** {scenario}")
+    # Summary
+    summary_prompt = f"summarize customer review in one short sentence: {review}"
+    summary_ids = model.generate(
+        **tokenizer(summary_prompt, return_tensors="pt", truncation=True, max_length=512),
+        max_length=30,
+        min_length=8,
+        num_beams=4,
+        do_sample=False,
+        repetition_penalty=1.2
+    )
+    summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
 
-    # Stage 2: Text to Story (Inline)
-    st.text('Generating a story...')
-    story_pipe = pipeline("text-generation", model="pranavpsv/genre-story-generator-v2")
-    story_results = story_pipe(scenario)
-    story = story_results[0]['generated_text']
-    st.write(f"**Story:** {story}")
+    # Customer service reply
+    reply_prompt = f"""Customer feedback summary: {summary}
+    Write a polite Starbucks customer service reply starting with: Thank you for your valuable feedback."""
 
-    # Stage 3: Story to Audio (Inline)
-    st.text('Generating audio data...')
-    audio_pipe = pipeline("text-to-audio", model="Matthijs/mms-tts-eng")
-    audio_data = audio_pipe(story)
+    reply_ids = model.generate(
+        **tokenizer(reply_prompt, return_tensors="pt", truncation=True, max_length=512),
+        max_length=50,
+        min_length=20,
+        num_beams=5,
+        do_sample=False,
+        repetition_penalty=1.2
+    )
+    reply = tokenizer.decode(reply_ids[0], skip_special_tokens=True)
 
-    # Play button
-    if st.button("Play Audio"):
-        audio_array = audio_data["audio"]
-        sample_rate = audio_data["sampling_rate"]
-        st.audio(audio_array, sample_rate=sample_rate)
+    return sentiment, summary, reply
+
+# Web route
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        review_text = request.form['review']
+        sentiment, summary, reply = analyze_customer_review(review_text)
+        return render_template('index.html',
+                               review=review_text,
+                               sentiment=sentiment,
+                               summary=summary,
+                               reply=reply)
+    return render_template('index.html')
+
+if __name__ == '__main__':
+    app.run(debug=True)
