@@ -1,25 +1,31 @@
-# app.py (Step 4 - Full AI Customer Review Analysis)
+# app.py (Streamlit Version - No Flask, No Errors)
 import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-from flask import Flask, request, jsonify, render_template
+import streamlit as st
 from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 
-app = Flask(__name__)
+# --------------------------
+# Load models once (cached)
+# --------------------------
+@st.cache_resource(show_spinner="Loading models...")
+def load_models():
+    sentiment_analyzer = pipeline("text-classification", model="final_starbucks_model", device=-1)
+    model_name = "MBZUAI/LaMini-Flan-T5-248M"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+    return sentiment_analyzer, tokenizer, model
 
-# Load models
-sentiment_analyzer = pipeline("text-classification", model="final_starbucks_model", device=-1)
+sentiment_analyzer, tokenizer, model = load_models()
 
-model_name = "MBZUAI/LaMini-Flan-T5-248M"
-tokenizer = AutoTokenizer.frompretrained(model_name)
-model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-
-# AI Function (Step 4 core logic)
+# --------------------------
+# Core analysis function
+# --------------------------
 def analyze_customer_review(review):
     # Sentiment analysis
     sentiment = sentiment_analyzer(review)[0]["label"]
 
-    # Summary
+    # Generate summary
     summary_prompt = f"summarize customer review in one short sentence: {review}"
     summary_ids = model.generate(
         **tokenizer(summary_prompt, return_tensors="pt", truncation=True, max_length=512),
@@ -31,10 +37,11 @@ def analyze_customer_review(review):
     )
     summary = tokenizer.decode(summary_ids[0], skip_special_tokens=True)
 
-    # Customer service reply
-    reply_prompt = f"""Customer feedback summary: {summary}
-    Write a polite Starbucks customer service reply starting with: Thank you for your valuable feedback."""
-
+    # Generate customer service reply
+    reply_prompt = (
+        f"Customer feedback summary: {summary}\n"
+        "Write a polite Starbucks customer service reply starting with: Thank you for your valuable feedback."
+    )
     reply_ids = model.generate(
         **tokenizer(reply_prompt, return_tensors="pt", truncation=True, max_length=512),
         max_length=50,
@@ -47,18 +54,25 @@ def analyze_customer_review(review):
 
     return sentiment, summary, reply
 
-# Web route
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    if request.method == 'POST':
-        review_text = request.form['review']
-        sentiment, summary, reply = analyze_customer_review(review_text)
-        return render_template('index.html',
-                               review=review_text,
-                               sentiment=sentiment,
-                               summary=summary,
-                               reply=reply)
-    return render_template('index.html')
+# --------------------------
+# Streamlit UI
+# --------------------------
+st.title("Starbucks Customer Review Analyzer ☕")
 
-if __name__ == '__main__':
-    app.run(debug=True)
+review_text = st.text_area("Enter your Starbucks review:", height=150)
+
+if st.button("Analyze Review"):
+    if review_text.strip() == "":
+        st.warning("Please enter a review first.")
+    else:
+        with st.spinner("Analyzing..."):
+            sentiment, summary, reply = analyze_customer_review(review_text)
+
+        st.subheader("Sentiment")
+        st.write(sentiment)
+
+        st.subheader("Summary")
+        st.write(summary)
+
+        st.subheader("Generated Reply")
+        st.write(reply)
