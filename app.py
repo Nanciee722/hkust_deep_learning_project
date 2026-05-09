@@ -4,54 +4,52 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import streamlit as st
 from transformers import pipeline
 
-# ==============================================
-# 同时加载两个模型，修正了子文件夹路径
-# ==============================================
-@st.cache_resource(show_spinner="Loading YOUR TWO models...")
-def load_both_models():
-    # 模型1：starbucks_sentiment_model（文件在子文件夹里）
-    model1 = pipeline(
+
+# ── Load model ─────────────────────────────────────────────────────────────────
+@st.cache_resource(show_spinner="Loading sentiment model...")
+def load_model():
+    """
+    Load the fine-tuned Starbucks sentiment model from Hugging Face Hub.
+    The model files are stored inside a subfolder with the same name as the repo.
+    """
+    model = pipeline(
         "text-classification",
         model="Nancyaaaaaaa/starbucks_sentiment_model",
-        subfolder="starbucks_sentiment_model",  # 关键修正
-        device=-1
+        subfolder="starbucks_sentiment_model",
+        device=-1  # force CPU
     )
+    return model
 
-    # 模型2：final_starbucks_model（文件在子文件夹里）
-    model2 = pipeline(
-        "text-classification",
-        model="Nancyaaaaaaa/final_starbucks_model",
-        subfolder="final_starbucks_model",  # 关键修正
-        device=-1
-    )
-    return model1, model2
+sentiment_model = load_model()
 
-sentiment_model1, sentiment_model2 = load_both_models()
 
-# ==============================================
-# 分析功能（两个模型一起输出）
-# ==============================================
-def analyze(review):
-    res1 = sentiment_model1(review)[0]
-    res2 = sentiment_model2(review)[0]
-    return res1, res2
+# ── Analysis function ──────────────────────────────────────────────────────────
+def analyze(review: str) -> dict:
+    """
+    Run sentiment classification on the given review text.
 
-# ==============================================
-# 界面
-# ==============================================
-st.title("✅ MY TWO TRAINED SENTIMENT MODELS")
-st.subheader("Starbucks Review Analyzer")
+    Args:
+        review: Customer review string.
 
-review = st.text_area("Enter review:")
+    Returns:
+        Dict with 'label' and 'score' keys.
+    """
+    result = sentiment_model(review)[0]
+    return result
+
+
+# ── UI ─────────────────────────────────────────────────────────────────────────
+st.title("☕ Starbucks Review Sentiment Analyzer")
+st.subheader("Powered by my fine-tuned model")
+
+review = st.text_area("Enter a Starbucks review:")
 
 if st.button("Analyze"):
-    if review:
-        r1, r2 = analyze(review)
+    if review.strip():
+        result = analyze(review)
+        st.success(f"Sentiment: **{result['label']}**")
+        st.write(f"Confidence: {result['score']:.3f}")
+    else:
+        st.warning("Please enter a review first.")
 
-        st.success("Model 1: starbucks_sentiment_model")
-        st.write(f"Sentiment: {r1['label']} | Score: {r1['score']:.3f}")
-
-        st.success("Model 2: final_starbucks_model")
-        st.write(f"Sentiment: {r2['label']} | Score: {r2['score']:.3f}")
-
-st.caption("✅ Both models are trained by ME")
+st.caption("✅ Model trained by Nancyaaaaaaa")
